@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Clima en mi Ciudad</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    body{display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#eef2f7}
+    .card{width:min(720px,95vw);background:white;padding:20px;border-radius:12px;box-shadow:0 8px 24px rgba(20,30,60,0.08)}
+    h1{margin:0 0 12px;font-size:1.4rem}
+    .info{display:flex;gap:16px;align-items:center}
+    .left{flex:1}
+    .right{min-width:160px;text-align:right}
+    .small{color:#666;font-size:0.9rem}
+    button{background:#2563eb;color:white;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    pre{background:#f6f8fb;padding:10px;border-radius:8px;overflow:auto}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Escanear clima actual</h1>
+    <p class="small">Este demo obtiene tu ubicación, detecta la ciudad (reverse-geocoding) y solicita el clima actual para esa ubicación. Usa APIs sin llave (Open-Meteo) por defecto.</p>
+
+    <div style="margin:12px 0;display:flex;gap:10px;align-items:center;">
+      <button id="btnScan">Escanear</button>
+      <div id="status" class="small">Esperando acción...</div>
+    </div>
+
+    <div id="result" style="margin-top:14px;display:none">
+      <div class="info">
+        <div class="left">
+          <div><strong id="city">—</strong> <span id="country" class="small"></span></div>
+          <div class="small" id="coords">Lat: —, Lon: —</div>
+          <div style="margin-top:8px">Descripción: <span id="desc">—</span></div>
+        </div>
+        <div class="right">
+          <div style="font-size:1.6rem" id="temp">— °C</div>
+          <div class="small" id="wind">— m/s</div>
+        </div>
+      </div>
+
+     
+    </div>
+
+    <hr />
+    
+  </div>
+
+<script>
+const btn = document.getElementById('btnScan');
+const status = document.getElementById('status');
+const result = document.getElementById('result');
+
+async function reverseGeocodeOpenMeteo(lat, lon){
+  // Open-Meteo geocoding (no API key required) - returns nearby place names
+  const url = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=es&count=10`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Error en geocoding');
+  return res.json();
+}
+
+async function getWeatherOpenMeteo(lat, lon){
+  // Open-Meteo current weather endpoint (no key)
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Error en weather');
+  return res.json();
+}
+
+function chooseCityFromGeocode(geoJson){
+  // The reverse results include place types; prefer 'city' or 'town' but fall back to first result
+  if(!geoJson || !geoJson.results || geoJson.results.length===0) return null;
+  const prefer = geoJson.results.find(r => ['city','town','village','municipality'].includes(r.type));
+  return prefer || geoJson.results[0];
+}
+
+btn.addEventListener('click', async ()=>{
+  status.textContent = 'Solicitando permiso de ubicación...';
+  result.style.display = 'none';
+
+  try{
+   // Coordenadas fijas de Barranquilla
+const lat = 10.9685;
+const lon = -74.7813;
+
+status.textContent = `Usando ubicación fija: ${lat}, ${lon}. Buscando ciudad...`;
+
+  
+
+   status.textContent = `Consultando clima de Barranquilla...`;
+
+const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
+
+const res = await fetch(url);
+const weather = await res.json();
+
+// mostrar datos
+document.getElementById('city').textContent = "Barranquilla";
+document.getElementById('country').textContent = "(Colombia)";
+document.getElementById('coords').textContent = `Lat: ${lat}, Lon: ${lon}`;
+
+const cw = weather.current_weather || {};
+document.getElementById('temp').textContent = cw.temperature !== undefined ? cw.temperature + ' ºC' : '_';
+document.getElementById('wind').textContent = cw.windspeed !== undefined ? cw.windspeed + ' m/s' : '_';
+document.getElementById('desc').textContent = `Código de tiempo: ${cw.weathercode ?? '_'}`;
+
+
+status.textContent = 'Listo.';
+result.style.display = 'block';
+
+    status.textContent = 'Listo.';
+    result.style.display = 'block';
+  }catch(err){
+    status.textContent = 'Error: ' + (err.message || err);
+    console.error(err);
+  }
+});
+</script>
+</body>
+</html>
